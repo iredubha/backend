@@ -1,69 +1,64 @@
+// src/app.js
 import express from "express";
+import {
+  books,
+  findBookById,
+  searchByTitle,
+  getBooksFromDb,
+  getBookOrThrow
+} from "./books.js";
 
 const app = express();
 const PORT = 3000;
 
 
+// Үндсэн нүүр хуудасны route-ийг нэмэх
 app.get("/", (req, res) => {
-  res.json({
-    message: "Library API",
+  res.status(200).json({
+    message: "Library API is running!",
     version: "1.0.0"
   });
 });
 
+// JSON өгөгдөл хүлээж авах тохиргоо
+app.use(express.json());
 
-app.get("/health", (req, res) => {
-  res.status(200).json({
-    status: "ok",
-    uptime: process.uptime()
-  });
+// 1. Бүх номыг авах эсвэл хайлт хийх (Async/Await ашигласан нь)
+app.get("/books", async (req, res) => {
+  try {
+    const q = req.query.q;
+    // Database-ийг хүлээх процессийн дуураймал
+    const allBooks = await getBooksFromDb();
+
+    if (q) {
+      const filtered = searchByTitle(q);
+      return res.status(200).json(filtered);
+    }
+
+    res.status(200).json(allBooks);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
-
-app.get("/profile", (req, res) => {
-  res.json({
-    name: "Bat",
-    role: "USER",
-    email: "bat@example.com"
-  });
+// 2. ID-гаар ном хайх (Async болон Error handling-тэй)
+app.get("/books/:id", async (req, res) => {
+  try {
+    const bookId = Number(req.params.id);
+    
+    // books.js доторх throw шиддэг функцийг ашиглаж байна
+    const book = getBookOrThrow(bookId);
+    
+    res.status(200).json(book);
+  } catch (error) {
+    // Хэрэв олдоогүй бол 404 буцаана
+    res.status(404).json({
+      message: error.message
+    });
+  }
 });
 
-app.get("/books/:id", (req, res) => {
-  const id = Number(req.params.id);
-  res.json({
-    id: id,
-    title: "Node.js Basics"
-  });
-});
-
-
-
-app.get("/about", (req, res) => {
-  res.status(200).json({
-    projectName: "Library API",
-    version: "1.0.0",
-    author: "Бат-Ирээдүй"
-  });
-});
-
-
-app.get("/students", (req, res) => {
-  res.status(200).json([
-    { id: 1, name: "Тэмүүлэн", major: "UX/UI" },
-    { id: 2, name: "Билгүүн", major: "Software Engineering" },
-    { id: 3, name: "Анужин", major: "Business Analytics" }
-  ]);
-});
-
-
-app.get("/courses", (req, res) => {
-  res.status(200).json([
-    { courseId: 101, title: "Node.js & Express Backend", credits: 3 },
-    { courseId: 102, title: "Advanced UX/UI Design Systems", credits: 4 }
-  ]);
-});
-
-
+// Серверийг асаах
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
