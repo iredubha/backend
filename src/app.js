@@ -1,18 +1,15 @@
-// src/app.js
 import express from "express";
-import {
-  books,
-  findBookById,
-  searchByTitle,
-  getBooksFromDb,
-  getBookOrThrow
-} from "./books.js";
+import booksRouter from "./routes/books.router.js";
+import { logger } from "./middlewares/logger.js";
+import { notFound, errorHandler } from "./middlewares/error.js";
 
 const app = express();
 const PORT = 3000;
 
+app.use(express.json());
+app.use(logger);
 
-// Үндсэн нүүр хуудасны route-ийг нэмэх
+// Үндсэн нүүр хуудас
 app.get("/", (req, res) => {
   res.status(200).json({
     message: "Library API is running!",
@@ -20,45 +17,11 @@ app.get("/", (req, res) => {
   });
 });
 
-// JSON өгөгдөл хүлээж авах тохиргоо
-app.use(express.json());
+app.use("/books", booksRouter);
 
-// 1. Бүх номыг авах эсвэл хайлт хийх (Async/Await ашигласан нь)
-app.get("/books", async (req, res) => {
-  try {
-    const q = req.query.q;
-    // Database-ийг хүлээх процессийн дуураймал
-    const allBooks = await getBooksFromDb();
+app.use(notFound);
+app.use(errorHandler);
 
-    if (q) {
-      const filtered = searchByTitle(q);
-      return res.status(200).json(filtered);
-    }
-
-    res.status(200).json(allBooks);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// 2. ID-гаар ном хайх (Async болон Error handling-тэй)
-app.get("/books/:id", async (req, res) => {
-  try {
-    const bookId = Number(req.params.id);
-    
-    // books.js доторх throw шиддэг функцийг ашиглаж байна
-    const book = getBookOrThrow(bookId);
-    
-    res.status(200).json(book);
-  } catch (error) {
-    // Хэрэв олдоогүй бол 404 буцаана
-    res.status(404).json({
-      message: error.message
-    });
-  }
-});
-
-// Серверийг асаах
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });
