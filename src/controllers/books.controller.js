@@ -1,12 +1,22 @@
 import {
   books, findBookById, addBook,
-  updateBook, removeBook
+  updateBook, removeBook, searchByTitle
 } from "../data/books.js";
 
 export function list(req, res) {
   res.json({
     count: books.length,
     data: books
+  });
+}
+
+export function search(req, res) {
+  const { q = "" } = req.query;
+  const results = searchByTitle(q);
+
+  res.json({
+    count: results.length,
+    data: results
   });
 }
 
