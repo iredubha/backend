@@ -1,11 +1,13 @@
 import "dotenv/config";
 import express from "express";
+import { PrismaClient } from '@prisma/client'; // <-- Энд import болгов
 import booksRouter from "./routes/books.router.js";
 import { logger } from "./middlewares/logger.js";
 import { notFound, errorHandler } from "./middlewares/error.js";
 
 const app = express();
 const PORT = process.env.PORT ?? 3000;
+const prisma = new PrismaClient(); // <-- Prisma-г шууд зарлав
 
 app.use(express.json());
 app.use(logger);
