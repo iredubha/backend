@@ -6,8 +6,10 @@ export function notFound(req, res) {
 }
 
 export function errorHandler(error, req, res, next) {
-  console.error(error);
-  res.status(500).json({
-    message: "Internal server error"
+  const status = error.status ?? 500;
+  if (status === 500) console.error(error);
+
+  res.status(status).json({
+    message: status === 500 ? "Internal server error" : error.message
   });
 }

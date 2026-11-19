@@ -1,10 +1,66 @@
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
-// 1. Бүх номыг авах
+// ---------- Туслах функцүүд (шүүх, эрэмбэлэх) ----------
+
+function parseNumber(value, name) {
+  const n = Number(value);
+  if (Number.isNaN(n)) {
+    throw { status: 400, message: `${name} тоо байх ёстой` };
+  }
+  return n;
+}
+
+function buildWhere(query) {
+  const where = {};
+
+  if (query.authorId) {
+    where.authorId = parseNumber(query.authorId, "authorId");
+  }
+  if (query.available) {
+    where.isAvailable = query.available === "true";
+  }
+
+  // Гарчигаар хайх
+  if (query.q) {
+    where.title = { contains: query.q, mode: "insensitive" };
+  }
+  // Зохиолчийн нэрээр хайх
+  if (query.author) {
+    where.author = {
+      name: { contains: query.author, mode: "insensitive" }
+    };
+  }
+
+  // Үнийн хүрээ
+  const price = {};
+  if (query.minPrice) price.gte = parseNumber(query.minPrice, "minPrice");
+  if (query.maxPrice) price.lte = parseNumber(query.maxPrice, "maxPrice");
+  if (Object.keys(price).length > 0) {
+    where.price = price;
+  }
+
+  return where;
+}
+
+function buildOrderBy(query) {
+  const allowed = ["title", "price", "createdAt"];
+  const sort = allowed.includes(query.sort) ? query.sort : "createdAt";
+  const order = query.order === "asc" ? "asc" : "desc";
+  return { [sort]: order };
+}
+
+// ---------- Controller-ууд ----------
+
+// 1. Бүх номыг авах (шүүлтүүр, эрэмбэтэй)
 export async function list(req, res, next) {
   try {
-    const books = await prisma.book.findMany();
+    const books = await prisma.book.findMany({
+      where: buildWhere(req.query),
+      orderBy: buildOrderBy(req.query),
+      include: { author: true }
+    });
+
     res.json({
       count: books.length,
       data: books
@@ -22,7 +78,7 @@ export async function search(req, res, next) {
       where: {
         title: {
           contains: q,
-          mode: 'insensitive' // Том жижиг үсэг харгалзахгүй хайх
+          mode: 'insensitive'
         }
       }
     });
@@ -83,7 +139,6 @@ export async function update(req, res, next) {
     const id = Number(req.params.id);
     const { id: _ignored, ...safeChanges } = req.body;
 
-    // Өөрчлөх гэж буй ном байгаа эсэхийг шалгах
     const existing = await prisma.book.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: "Book not found" });
